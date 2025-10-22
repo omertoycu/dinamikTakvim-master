@@ -1,7 +1,5 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMessageBox
-
-# UI pencerelerimizi kendi dosyalarından içe aktarıyoruz.
 from ui.login_window import LoginWindow
 from ui.admin_dashboard import AdminDashboard
 from ui.coordinator_dashboard import CoordinatorDashboard
@@ -39,29 +37,43 @@ class ApplicationController:
         if role == 'admin':
             # Admin rolü için AdminDashboard'u oluştur ve göster.
             self.main_window = AdminDashboard(user_data)
+            self.main_window.logout_signal.connect(self.handle_logout)
             self.main_window.show()
         elif role == 'coordinator':
             # Coordinator rolü için CoordinatorDashboard'u oluştur ve göster.
             self.main_window = CoordinatorDashboard(user_data)
+            self.main_window.logout_signal.connect(self.handle_logout)
             self.main_window.show()
         else:
             # Geçersiz bir rol gelmesi durumunda kritik bir hata mesajı göster.
             # Normalde bu durumun oluşmaması gerekir.
             QMessageBox.critical(None, "Sistem Hatası", "Geçersiz kullanıcı rolü tespit edildi!")
+    
+    def handle_logout(self):
+        """Çıkış yapıldığında çağrılır, giriş ekranına döner."""
+        # Mevcut dashboard'u kapat
+        if self.main_window:
+            self.main_window.close()
+            self.main_window = None
+        
+        # Yeni login penceresi oluştur
+        self.login_window = LoginWindow()
+        self.login_window.login_success.connect(self.show_dashboard)
+        self.login_window.show()
+
+
+def main():
+    """Ana uygulama fonksiyonu."""
+    app = QApplication(sys.argv)
+
+    # ApplicationController'ı başlat.
+    # Bu, login ekranını gösterecek ve kullanıcıya uygun paneli yönlendirecek.
+    controller = ApplicationController()
+
+    # Uygulamanın olay döngüsünü başlat.
+    sys.exit(app.exec_())
 
 
 if __name__ == '__main__':
-    try:
-        app = QApplication(sys.argv)
-
-        # Uygulamayı başlatmak ve kontrolü sağlamak için ApplicationController'ı oluştur.
-        controller = ApplicationController()
-
-        # Uygulamanın döngüsünü başlat.
-        sys.exit(app.exec_())
-    except Exception as e:
-        print(f"Hata: {e}")
-        import traceback
-        traceback.print_exc()
-        input("Devam etmek için Enter'a basın...")
+    main()
 

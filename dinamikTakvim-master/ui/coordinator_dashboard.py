@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QVBoxLayout, QHBoxLay
                              QTabWidget, QLineEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QComboBox, QMessageBox, QFormLayout,
                              QHeaderView, QSpinBox, QDialog, QGridLayout, QFileDialog,
-                             QProgressBar, QTextEdit, QDateEdit, QCheckBox)
-from PyQt5.QtGui import QFont, QColor
+                             QProgressBar, QTextEdit, QDateEdit, QCheckBox, QToolBar, QAction)
+from PyQt5.QtGui import QFont, QColor, QIcon
 from PyQt5.QtCore import Qt, QDate, QObject, QThread, pyqtSignal
 from datetime import datetime, timedelta
 # import pandas as pd  # Geçici olarak devre dışı
@@ -43,6 +43,9 @@ from export_manager import ExportManager
 
 class CoordinatorDashboard(QMainWindow):
     """Bölüm Koordinatörü paneli ana penceresi."""
+    
+    # Çıkış yapıldığında sinyal gönder
+    logout_signal = pyqtSignal()
 
     def __init__(self, user_data):
         super().__init__()
@@ -53,6 +56,9 @@ class CoordinatorDashboard(QMainWindow):
 
         self.setWindowTitle(f"Bölüm Koordinatör Paneli - {self.user_data.get('department_name', '')}")
         self.setGeometry(200, 200, 1100, 700)
+        
+        # Toolbar oluştur
+        self.create_toolbar()
 
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
@@ -94,6 +100,51 @@ class CoordinatorDashboard(QMainWindow):
         self.init_seating_plan_ui()
         self.init_schedule_view_ui()
         self.init_export_ui()
+    
+    def create_toolbar(self):
+        """Üst toolbar'ı oluşturur (logout butonu için)."""
+        toolbar = QToolBar("Ana Toolbar")
+        toolbar.setMovable(False)
+        self.addToolBar(toolbar)
+        
+        # Kullanıcı bilgisi
+        user_label = QLabel(f"  👤 {self.user_data.get('email', 'Koordinatör')}  ")
+        user_label.setStyleSheet("font-weight: bold; color: #2c3e50; padding: 5px;")
+        toolbar.addWidget(user_label)
+        
+        # Bölüm bilgisi
+        dept_label = QLabel(f"  🏫 {self.user_data.get('department_name', 'Bölüm')}  ")
+        dept_label.setStyleSheet("color: #34495e; padding: 5px;")
+        toolbar.addWidget(dept_label)
+        
+        toolbar.addSeparator()
+        
+        # Spacer ekle (sağa yaslamak için)
+        from PyQt5.QtWidgets import QSizePolicy
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        toolbar.addWidget(spacer)
+        
+        # Logout butonu
+        logout_action = QAction("🚪 Çıkış Yap", self)
+        logout_action.setStatusTip("Sistemden çıkış yap")
+        logout_action.triggered.connect(self.handle_logout)
+        logout_action.setShortcut("Ctrl+Q")
+        toolbar.addAction(logout_action)
+    
+    def handle_logout(self):
+        """Çıkış yapma işlemini yönetir."""
+        reply = QMessageBox.question(
+            self, 
+            'Çıkış Onayı',
+            "Sistemden çıkmak istediğinizden emin misiniz?",
+            QMessageBox.Yes | QMessageBox.No, 
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.logout_signal.emit()
+            self.close()
 
     def init_classroom_ui(self):
         """Derslik Yönetimi sekmesinin arayüzünü oluşturur."""

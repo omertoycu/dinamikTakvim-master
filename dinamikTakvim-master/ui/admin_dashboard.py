@@ -1,8 +1,9 @@
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QLabel, QVBoxLayout, QHBoxLayout,
                              QTabWidget, QLineEdit, QPushButton, QTableWidget,
                              QTableWidgetItem, QComboBox, QMessageBox, QFormLayout,
-                             QHeaderView)
+                             QHeaderView, QToolBar, QAction, QSizePolicy)
 from PyQt5.QtGui import QFont
+from PyQt5.QtCore import pyqtSignal
 
 # Gerekli veritabanı fonksiyonlarını içe aktar
 from database import get_all_departments, get_all_users, add_new_user
@@ -10,12 +11,18 @@ from database import get_all_departments, get_all_users, add_new_user
 
 class AdminDashboard(QMainWindow):
     """Admin paneli ana penceresi."""
+    
+    # Çıkış yapıldığında sinyal gönder
+    logout_signal = pyqtSignal()
 
     def __init__(self, user_data):
         super().__init__()
         self.user_data = user_data
         self.setWindowTitle("Admin Paneli - Dinamik Sınav Takvimi Sistemi")
         self.setGeometry(200, 200, 950, 600)
+        
+        # Toolbar oluştur
+        self.create_toolbar()
 
         # Ana widget olarak bir QTabWidget (Sekmeli arayüz) oluştur
         self.tabs = QTabWidget()
@@ -40,6 +47,45 @@ class AdminDashboard(QMainWindow):
         self.init_classrooms_view_ui()
         self.init_courses_view_ui()
         self.init_exams_view_ui()
+    
+    def create_toolbar(self):
+        """Üst toolbar'ı oluşturur (logout butonu için)."""
+        toolbar = QToolBar("Ana Toolbar")
+        toolbar.setMovable(False)
+        self.addToolBar(toolbar)
+        
+        # Kullanıcı bilgisi
+        user_label = QLabel(f"  👤 {self.user_data.get('email', 'Admin')} (Admin)  ")
+        user_label.setStyleSheet("font-weight: bold; color: #e74c3c; padding: 5px;")
+        toolbar.addWidget(user_label)
+        
+        toolbar.addSeparator()
+        
+        # Spacer ekle (sağa yaslamak için)
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        toolbar.addWidget(spacer)
+        
+        # Logout butonu
+        logout_action = QAction("🚪 Çıkış Yap", self)
+        logout_action.setStatusTip("Sistemden çıkış yap")
+        logout_action.triggered.connect(self.handle_logout)
+        logout_action.setShortcut("Ctrl+Q")
+        toolbar.addAction(logout_action)
+    
+    def handle_logout(self):
+        """Çıkış yapma işlemini yönetir."""
+        reply = QMessageBox.question(
+            self, 
+            'Çıkış Onayı',
+            "Sistemden çıkmak istediğinizden emin misiniz?",
+            QMessageBox.Yes | QMessageBox.No, 
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            self.logout_signal.emit()
+            self.close()
 
     def init_user_management_ui(self):
         """Kullanıcı yönetimi sekmesinin arayüzünü oluşturur."""
