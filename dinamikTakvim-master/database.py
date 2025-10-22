@@ -423,3 +423,71 @@ def get_student_by_no(student_no):
             connection.close()
     return None
 
+def get_student_courses(student_no):
+    """Öğrencinin aldığı dersleri getirir."""
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            query = """
+                SELECT c.code, c.name, c.course_type, c.class_level, i.full_name as instructor_name
+                FROM students s
+                JOIN enrollments e ON s.id = e.student_id
+                JOIN courses c ON e.course_id = c.id
+                JOIN instructors i ON c.instructor_id = i.id
+                WHERE s.student_no = %s
+                ORDER BY c.code
+            """
+            cursor.execute(query, (student_no,))
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Öğrenci dersleri alınırken hata: {e}")
+            return []
+        finally:
+            connection.close()
+    return []
+
+def get_all_courses_by_department(department_id):
+    """Bölüme ait tüm dersleri getirir."""
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            query = """
+                SELECT c.id, c.code, c.name, c.course_type, c.class_level, i.full_name as instructor_name
+                FROM courses c
+                JOIN instructors i ON c.instructor_id = i.id
+                WHERE c.department_id = %s
+                ORDER BY c.class_level, c.code
+            """
+            cursor.execute(query, (department_id,))
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Dersler alınırken hata: {e}")
+            return []
+        finally:
+            connection.close()
+    return []
+
+def get_course_students(course_id):
+    """Derse kayıtlı öğrencileri getirir."""
+    connection = get_db_connection()
+    if connection:
+        try:
+            cursor = connection.cursor(dictionary=True)
+            query = """
+                SELECT s.student_no, s.full_name, s.class_level
+                FROM students s
+                JOIN enrollments e ON s.id = e.student_id
+                WHERE e.course_id = %s
+                ORDER BY s.student_no
+            """
+            cursor.execute(query, (course_id,))
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Ders öğrencileri alınırken hata: {e}")
+            return []
+        finally:
+            connection.close()
+    return []
+

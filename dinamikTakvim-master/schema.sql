@@ -206,7 +206,44 @@ INSERT INTO users (email, password, role, department_id) VALUES
     ('admin@kocaeli.edu.tr', 'admin123', 'admin', NULL)
 ON DUPLICATE KEY UPDATE email=email;
 
+-- Bilgisayar Mühendisliği Bölümü için örnek derslikler ekle
+-- Bölüm ID'si 1 (Bilgisayar Mühendisliği)
+INSERT INTO classrooms (department_id, code, name, capacity, rows_count, cols_count, seating_type) VALUES
+    (1, '3001', '301', 42, 7, 3, 3),
+    (1, '3002', 'Büyük Amfi', 48, 8, 3, 4),
+    (1, '3003', '303', 42, 7, 3, 3),
+    (1, '3004', 'EDA', 30, 6, 5, 2),
+    (1, '3005', '305', 42, 7, 3, 3)
+ON DUPLICATE KEY UPDATE code=code;
 
+-- Diğer bölümler için örnek derslikler
+-- Yazılım Mühendisliği (ID: 2)
+INSERT INTO classrooms (department_id, code, name, capacity, rows_count, cols_count, seating_type) VALUES
+    (2, '4001', 'YZM-101', 40, 8, 5, 2),
+    (2, '4002', 'YZM-102', 35, 7, 5, 2),
+    (2, '4003', 'YZM-Lab', 30, 6, 5, 2)
+ON DUPLICATE KEY UPDATE code=code;
+
+-- Elektrik Mühendisliği (ID: 3)
+INSERT INTO classrooms (department_id, code, name, capacity, rows_count, cols_count, seating_type) VALUES
+    (3, '5001', 'ELK-201', 45, 9, 5, 2),
+    (3, '5002', 'ELK-202', 40, 8, 5, 2),
+    (3, '5003', 'ELK-Lab', 25, 5, 5, 2)
+ON DUPLICATE KEY UPDATE code=code;
+
+-- Elektronik Mühendisliği (ID: 4)
+INSERT INTO classrooms (department_id, code, name, capacity, rows_count, cols_count, seating_type) VALUES
+    (4, '6001', 'ELT-301', 38, 7, 5, 2),
+    (4, '6002', 'ELT-302', 42, 7, 6, 2),
+    (4, '6003', 'ELT-Lab', 28, 7, 4, 2)
+ON DUPLICATE KEY UPDATE code=code;
+
+-- İnşaat Mühendisliği (ID: 5)
+INSERT INTO classrooms (department_id, code, name, capacity, rows_count, cols_count, seating_type) VALUES
+    (5, '7001', 'İNŞ-101', 50, 10, 5, 2),
+    (5, '7002', 'İNŞ-102', 45, 9, 5, 2),
+    (5, '7003', 'İNŞ-Proje', 35, 7, 5, 2)
+ON DUPLICATE KEY UPDATE code=code;
 
 ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '145323';
 FLUSH PRIVILEGES;

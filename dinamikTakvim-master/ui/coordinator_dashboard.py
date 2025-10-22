@@ -65,30 +65,35 @@ class CoordinatorDashboard(QMainWindow):
         self.seating_plan_tab = QWidget()
         self.schedule_view_tab = QWidget()
         self.export_tab = QWidget()
-        # self.debug_tab = QWidget()  # Geçici olarak devre dışı
+        self.student_list_tab = QWidget()
+        self.course_list_tab = QWidget()
 
         self.tabs.addTab(self.classroom_tab, "Derslik Yönetimi")
         self.tabs.addTab(self.course_upload_tab, "Ders Listesi Yükle")
         self.tabs.addTab(self.student_upload_tab, "Öğrenci Listesi Yükle")
+        self.tabs.addTab(self.student_list_tab, "Öğrenci Listesi")
+        self.tabs.addTab(self.course_list_tab, "Ders Listesi")
         self.tabs.addTab(self.exam_schedule_tab, "Sınav Zamanlama")
         self.tabs.addTab(self.seating_plan_tab, "Oturma Planı")
         self.tabs.addTab(self.schedule_view_tab, "Program Görünümü")
         self.tabs.addTab(self.export_tab, "Dışa Aktarma")
-        # self.tabs.addTab(self.debug_tab, "Debug")  # Geçici olarak devre dışı
 
         # Proje tanımına göre derslikler girilmeden diğer tablar pasif olmalı
         self.tabs.setTabEnabled(1, False)
         self.tabs.setTabEnabled(2, False)
         self.tabs.setTabEnabled(3, False)
+        self.tabs.setTabEnabled(4, False)
+        self.tabs.setTabEnabled(5, False)
 
         self.init_classroom_ui()
         self.init_course_upload_ui()
         self.init_student_upload_ui()
+        self.init_student_list_ui()
+        self.init_course_list_ui()
         self.init_exam_schedule_ui()
         self.init_seating_plan_ui()
         self.init_schedule_view_ui()
         self.init_export_ui()
-        # self.init_debug_ui()  # Geçici olarak devre dışı
 
     def init_classroom_ui(self):
         """Derslik Yönetimi sekmesinin arayüzünü oluşturur."""
@@ -258,11 +263,180 @@ class CoordinatorDashboard(QMainWindow):
         
         self.student_upload_tab.setLayout(layout)
 
+    def init_student_list_ui(self):
+        """Öğrenci Listesi sekmesinin arayüzünü oluşturur."""
+        layout = QVBoxLayout()
+        
+        title = QLabel("Öğrenci Arama ve Ders Listesi")
+        font = QFont()
+        font.setPointSize(14)
+        font.setBold(True)
+        title.setFont(font)
+        
+        # Arama alanı
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Öğrenci No:")
+        self.student_search_input = QLineEdit()
+        self.student_search_input.setPlaceholderText("Öğrenci numarası girin...")
+        self.student_search_button = QPushButton("Ara")
+        self.student_search_button.clicked.connect(self.handle_student_search)
+        
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.student_search_input)
+        search_layout.addWidget(self.student_search_button)
+        
+        # Öğrenci bilgileri alanı
+        self.student_info_text = QTextEdit()
+        self.student_info_text.setReadOnly(True)
+        self.student_info_text.setMaximumHeight(100)
+        
+        # Öğrencinin aldığı dersler tablosu
+        courses_label = QLabel("Öğrencinin Aldığı Dersler:")
+        courses_label.setFont(QFont("Arial", 11, QFont.Bold))
+        
+        self.student_courses_table = QTableWidget()
+        self.student_courses_table.setColumnCount(5)
+        self.student_courses_table.setHorizontalHeaderLabels([
+            "Ders Kodu", "Ders Adı", "Tür", "Sınıf", "Öğretim Üyesi"
+        ])
+        self.student_courses_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.student_courses_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        layout.addWidget(title)
+        layout.addLayout(search_layout)
+        layout.addWidget(QLabel("Öğrenci Bilgileri:"))
+        layout.addWidget(self.student_info_text)
+        layout.addWidget(courses_label)
+        layout.addWidget(self.student_courses_table)
+        
+        self.student_list_tab.setLayout(layout)
+
+    def init_course_list_ui(self):
+        """Ders Listesi sekmesinin arayüzünü oluşturur."""
+        layout = QVBoxLayout()
+        
+        title = QLabel("Ders Listesi ve Kayıtlı Öğrenciler")
+        font = QFont()
+        font.setPointSize(14)
+        font.setBold(True)
+        title.setFont(font)
+        
+        # Dersler listesi
+        courses_label = QLabel("Dersler:")
+        courses_label.setFont(QFont("Arial", 11, QFont.Bold))
+        
+        self.courses_list_table = QTableWidget()
+        self.courses_list_table.setColumnCount(5)
+        self.courses_list_table.setHorizontalHeaderLabels([
+            "Ders Kodu", "Ders Adı", "Tür", "Sınıf", "Öğretim Üyesi"
+        ])
+        self.courses_list_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.courses_list_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.courses_list_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.courses_list_table.cellClicked.connect(self.handle_course_selection)
+        
+        # Seçili derse kayıtlı öğrenciler
+        students_label = QLabel("Seçili Derse Kayıtlı Öğrenciler:")
+        students_label.setFont(QFont("Arial", 11, QFont.Bold))
+        
+        self.course_students_table = QTableWidget()
+        self.course_students_table.setColumnCount(3)
+        self.course_students_table.setHorizontalHeaderLabels([
+            "Öğrenci No", "Ad Soyad", "Sınıf"
+        ])
+        self.course_students_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.course_students_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        layout.addWidget(title)
+        layout.addWidget(courses_label)
+        layout.addWidget(self.courses_list_table)
+        layout.addWidget(students_label)
+        layout.addWidget(self.course_students_table)
+        
+        self.course_list_tab.setLayout(layout)
+        
+        # Dersleri yükle
+        self.load_courses_list()
+
+    def handle_student_search(self):
+        """Öğrenci arama işlemini gerçekleştirir."""
+        from database import get_student_by_no, get_student_courses
+        
+        student_no = self.student_search_input.text().strip()
+        if not student_no:
+            QMessageBox.warning(self, "Eksik Bilgi", "Lütfen bir öğrenci numarası girin.")
+            return
+        
+        # Öğrenci bilgilerini al
+        student = get_student_by_no(student_no)
+        if not student:
+            QMessageBox.information(self, "Bulunamadı", 
+                f"'{student_no}' numaralı öğrenci bulunamadı.")
+            self.student_info_text.clear()
+            self.student_courses_table.setRowCount(0)
+            return
+        
+        # Öğrenci bilgilerini göster
+        info_text = f"Öğrenci No: {student['student_no']}\n"
+        info_text += f"Ad Soyad: {student['full_name']}\n"
+        info_text += f"Sınıf: {student['class_level']}"
+        self.student_info_text.setText(info_text)
+        
+        # Öğrencinin aldığı dersleri al ve göster
+        courses = get_student_courses(student_no)
+        self.student_courses_table.setRowCount(len(courses))
+        
+        for row_num, course in enumerate(courses):
+            self.student_courses_table.setItem(row_num, 0, QTableWidgetItem(course['code']))
+            self.student_courses_table.setItem(row_num, 1, QTableWidgetItem(course['name']))
+            self.student_courses_table.setItem(row_num, 2, QTableWidgetItem(course['course_type']))
+            self.student_courses_table.setItem(row_num, 3, QTableWidgetItem(str(course['class_level'])))
+            self.student_courses_table.setItem(row_num, 4, QTableWidgetItem(course['instructor_name']))
+        
+        if not courses:
+            QMessageBox.information(self, "Bilgi", "Bu öğrenci henüz herhangi bir derse kayıtlı değil.")
+
+    def load_courses_list(self):
+        """Bölüme ait tüm dersleri yükler."""
+        from database import get_all_courses_by_department
+        
+        courses = get_all_courses_by_department(self.department_id)
+        self.courses_list_table.setRowCount(len(courses))
+        
+        for row_num, course in enumerate(courses):
+            self.courses_list_table.setItem(row_num, 0, QTableWidgetItem(course['code']))
+            self.courses_list_table.setItem(row_num, 1, QTableWidgetItem(course['name']))
+            self.courses_list_table.setItem(row_num, 2, QTableWidgetItem(course['course_type']))
+            self.courses_list_table.setItem(row_num, 3, QTableWidgetItem(str(course['class_level'])))
+            self.courses_list_table.setItem(row_num, 4, QTableWidgetItem(course['instructor_name']))
+            
+            # Course ID'yi saklı tut (hidden olarak)
+            self.courses_list_table.item(row_num, 0).setData(Qt.UserRole, course['id'])
+
+    def handle_course_selection(self, row, column):
+        """Ders seçildiğinde o derse kayıtlı öğrencileri gösterir."""
+        from database import get_course_students
+        
+        # Seçili dersin ID'sini al
+        course_id = self.courses_list_table.item(row, 0).data(Qt.UserRole)
+        
+        # Derse kayıtlı öğrencileri al
+        students = get_course_students(course_id)
+        self.course_students_table.setRowCount(len(students))
+        
+        for row_num, student in enumerate(students):
+            self.course_students_table.setItem(row_num, 0, QTableWidgetItem(student['student_no']))
+            self.course_students_table.setItem(row_num, 1, QTableWidgetItem(student['full_name']))
+            self.course_students_table.setItem(row_num, 2, QTableWidgetItem(str(student['class_level'])))
+        
+        if not students:
+            QMessageBox.information(self, "Bilgi", "Bu derse henüz kayıtlı öğrenci bulunmamaktadır.")
+
     def init_exam_schedule_ui(self):
         """Sınav Zamanlama sekmesinin arayüzünü oluşturur."""
         layout = QVBoxLayout()
         
-        title = QLabel("Sınav Programı Oluştur")
+        title = QLabel("Sınav Programı Oluştur - Kısıtlar")
         font = QFont()
         font.setPointSize(14)
         font.setBold(True)
@@ -282,6 +456,26 @@ class CoordinatorDashboard(QMainWindow):
         self.end_date.setCalendarPopup(True)
         date_layout.addWidget(self.end_date)
         
+        # Hariç tutulacak günler
+        excluded_days_layout = QHBoxLayout()
+        excluded_days_layout.addWidget(QLabel("Hariç Tutulacak Günler:"))
+        self.monday_excluded = QCheckBox("Pazartesi")
+        self.tuesday_excluded = QCheckBox("Salı")
+        self.wednesday_excluded = QCheckBox("Çarşamba")
+        self.thursday_excluded = QCheckBox("Perşembe")
+        self.friday_excluded = QCheckBox("Cuma")
+        self.saturday_excluded = QCheckBox("Cumartesi")
+        self.saturday_excluded.setChecked(True)
+        self.sunday_excluded = QCheckBox("Pazar")
+        self.sunday_excluded.setChecked(True)
+        excluded_days_layout.addWidget(self.monday_excluded)
+        excluded_days_layout.addWidget(self.tuesday_excluded)
+        excluded_days_layout.addWidget(self.wednesday_excluded)
+        excluded_days_layout.addWidget(self.thursday_excluded)
+        excluded_days_layout.addWidget(self.friday_excluded)
+        excluded_days_layout.addWidget(self.saturday_excluded)
+        excluded_days_layout.addWidget(self.sunday_excluded)
+        
         # Sınav türleri
         exam_types_layout = QHBoxLayout()
         exam_types_layout.addWidget(QLabel("Sınav Türleri:"))
@@ -294,6 +488,65 @@ class CoordinatorDashboard(QMainWindow):
         exam_types_layout.addWidget(self.final_checkbox)
         exam_types_layout.addWidget(self.butunleme_checkbox)
         
+        # Varsayılan sınav süresi ve bekleme süresi
+        duration_layout = QHBoxLayout()
+        duration_layout.addWidget(QLabel("Varsayılan Sınav Süresi (dk):"))
+        self.default_exam_duration = QSpinBox()
+        self.default_exam_duration.setRange(30, 240)
+        self.default_exam_duration.setValue(120)
+        self.default_exam_duration.setSingleStep(15)
+        duration_layout.addWidget(self.default_exam_duration)
+        
+        duration_layout.addWidget(QLabel("Bekleme Süresi (dk):"))
+        self.waiting_time = QSpinBox()
+        self.waiting_time.setRange(0, 120)
+        self.waiting_time.setValue(15)
+        self.waiting_time.setSingleStep(15)
+        duration_layout.addWidget(self.waiting_time)
+        
+        # Özel kısıtlar
+        constraints_layout = QHBoxLayout()
+        self.no_overlap_checkbox = QCheckBox("Hiçbir sınavın aynı anda olmaması")
+        self.no_overlap_checkbox.setToolTip("Bu seçenek işaretlenirse, hiçbir dersin sınavı aynı zamanda başlamaz")
+        constraints_layout.addWidget(self.no_overlap_checkbox)
+        
+        # Dersler listesi ve hariç tutma
+        courses_group_layout = QVBoxLayout()
+        courses_group_label = QLabel("Programa Dahil Edilecek Dersler:")
+        courses_group_label.setFont(QFont("Arial", 11, QFont.Bold))
+        courses_group_layout.addWidget(courses_group_label)
+        
+        # Dersler için arama ve seçim
+        course_search_layout = QHBoxLayout()
+        course_search_layout.addWidget(QLabel("Ara:"))
+        self.course_search_filter = QLineEdit()
+        self.course_search_filter.setPlaceholderText("Ders kodu veya adı ile ara...")
+        self.course_search_filter.textChanged.connect(self.filter_courses_for_scheduling)
+        course_search_layout.addWidget(self.course_search_filter)
+        
+        select_all_btn = QPushButton("Tümünü Seç")
+        select_all_btn.clicked.connect(self.select_all_courses)
+        course_search_layout.addWidget(select_all_btn)
+        
+        deselect_all_btn = QPushButton("Tümünü Kaldır")
+        deselect_all_btn.clicked.connect(self.deselect_all_courses)
+        course_search_layout.addWidget(deselect_all_btn)
+        
+        courses_group_layout.addLayout(course_search_layout)
+        
+        # Dersler tablosu (checkbox'lı)
+        self.scheduling_courses_table = QTableWidget()
+        self.scheduling_courses_table.setColumnCount(6)
+        self.scheduling_courses_table.setHorizontalHeaderLabels([
+            "Seç", "Ders Kodu", "Ders Adı", "Tür", "Sınıf", "Özel Süre (dk)"
+        ])
+        self.scheduling_courses_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.scheduling_courses_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.scheduling_courses_table.setMaximumHeight(200)
+        courses_group_layout.addWidget(self.scheduling_courses_table)
+        
+        self.load_courses_for_scheduling()
+        
         # Butonlar
         button_layout = QHBoxLayout()
         self.generate_schedule_button = QPushButton("Sınav Programı Oluştur")
@@ -305,6 +558,9 @@ class CoordinatorDashboard(QMainWindow):
         button_layout.addWidget(self.generate_schedule_button)
         button_layout.addWidget(self.sanitize_courses_button)
         button_layout.addWidget(self.clear_schedule_button)
+        
+        info_label = QLabel("💡 İpucu: Kısıtları ayarlayıp 'Sınav Programı Oluştur' butonuna tıklayın")
+        info_label.setStyleSheet("color: #0066cc; font-style: italic;")
         
         # İlerleme çubuğu
         self.schedule_progress = QProgressBar()
@@ -321,7 +577,12 @@ class CoordinatorDashboard(QMainWindow):
         
         layout.addWidget(title)
         layout.addLayout(date_layout)
+        layout.addLayout(excluded_days_layout)
         layout.addLayout(exam_types_layout)
+        layout.addLayout(duration_layout)
+        layout.addLayout(constraints_layout)
+        layout.addLayout(courses_group_layout)
+        layout.addWidget(info_label)
         layout.addLayout(button_layout)
         layout.addWidget(self.schedule_progress)
         layout.addWidget(QLabel("Sınav Programı:"))
@@ -331,6 +592,68 @@ class CoordinatorDashboard(QMainWindow):
         
         # Başlangıçta sınavları yükle
         self.load_scheduled_exams()
+
+    def load_courses_for_scheduling(self):
+        """Ders seçimi için dersleri yükler."""
+        from database import get_all_courses_by_department
+        
+        courses = get_all_courses_by_department(self.department_id)
+        self.scheduling_courses_table.setRowCount(len(courses))
+        
+        for row_num, course in enumerate(courses):
+            # Checkbox
+            checkbox = QCheckBox()
+            checkbox.setChecked(True)  # Varsayılan olarak tüm dersler seçili
+            self.scheduling_courses_table.setCellWidget(row_num, 0, checkbox)
+            
+            # Ders bilgileri
+            self.scheduling_courses_table.setItem(row_num, 1, QTableWidgetItem(course['code']))
+            self.scheduling_courses_table.setItem(row_num, 2, QTableWidgetItem(course['name']))
+            self.scheduling_courses_table.setItem(row_num, 3, QTableWidgetItem(course['course_type']))
+            self.scheduling_courses_table.setItem(row_num, 4, QTableWidgetItem(str(course['class_level'])))
+            
+            # Özel süre için spinbox
+            duration_spinbox = QSpinBox()
+            duration_spinbox.setRange(30, 240)
+            duration_spinbox.setValue(120)  # Varsayılan
+            duration_spinbox.setSingleStep(15)
+            duration_spinbox.setToolTip("Bu ders için özel sınav süresi (dakika)")
+            self.scheduling_courses_table.setCellWidget(row_num, 5, duration_spinbox)
+            
+            # Course ID'yi saklı tut
+            self.scheduling_courses_table.item(row_num, 1).setData(Qt.UserRole, course['id'])
+
+    def filter_courses_for_scheduling(self, text):
+        """Ders listesini filtreler."""
+        for row in range(self.scheduling_courses_table.rowCount()):
+            code_item = self.scheduling_courses_table.item(row, 1)
+            name_item = self.scheduling_courses_table.item(row, 2)
+            
+            if code_item and name_item:
+                code = code_item.text()
+                name = name_item.text()
+                
+                # Arama metnini içeriyorsa göster
+                if text.lower() in code.lower() or text.lower() in name.lower():
+                    self.scheduling_courses_table.setRowHidden(row, False)
+                else:
+                    self.scheduling_courses_table.setRowHidden(row, True)
+
+    def select_all_courses(self):
+        """Tüm dersleri seçer."""
+        for row in range(self.scheduling_courses_table.rowCount()):
+            if not self.scheduling_courses_table.isRowHidden(row):
+                checkbox = self.scheduling_courses_table.cellWidget(row, 0)
+                if checkbox:
+                    checkbox.setChecked(True)
+
+    def deselect_all_courses(self):
+        """Tüm derslerin seçimini kaldırır."""
+        for row in range(self.scheduling_courses_table.rowCount()):
+            if not self.scheduling_courses_table.isRowHidden(row):
+                checkbox = self.scheduling_courses_table.cellWidget(row, 0)
+                if checkbox:
+                    checkbox.setChecked(False)
 
     def _format_time(self, value):
         """MySQL TIME alanı timedelta olarak dönebilir; HH:MM formatla."""
@@ -371,16 +694,66 @@ class CoordinatorDashboard(QMainWindow):
             QMessageBox.warning(self, "Geçersiz Tarih", "Başlangıç tarihi bitiş tarihinden önce olmalıdır.")
             return
         
+        # Seçili dersleri topla
+        selected_courses = []
+        course_durations = {}
+        for row in range(self.scheduling_courses_table.rowCount()):
+            checkbox = self.scheduling_courses_table.cellWidget(row, 0)
+            if checkbox and checkbox.isChecked():
+                course_code_item = self.scheduling_courses_table.item(row, 1)
+                if course_code_item:
+                    course_id = course_code_item.data(Qt.UserRole)
+                    selected_courses.append(course_id)
+                    
+                    # Özel süresi varsa al
+                    duration_spinbox = self.scheduling_courses_table.cellWidget(row, 5)
+                    if duration_spinbox:
+                        course_durations[course_id] = duration_spinbox.value()
+        
+        if not selected_courses:
+            QMessageBox.warning(self, "Ders Seçilmedi", "Lütfen en az bir ders seçin.")
+            return
+        
+        # Hariç tutulacak günleri al
+        excluded_days = []
+        if self.monday_excluded.isChecked():
+            excluded_days.append(0)  # Pazartesi
+        if self.tuesday_excluded.isChecked():
+            excluded_days.append(1)
+        if self.wednesday_excluded.isChecked():
+            excluded_days.append(2)
+        if self.thursday_excluded.isChecked():
+            excluded_days.append(3)
+        if self.friday_excluded.isChecked():
+            excluded_days.append(4)
+        if self.saturday_excluded.isChecked():
+            excluded_days.append(5)
+        if self.sunday_excluded.isChecked():
+            excluded_days.append(6)
+        
+        # Kısıtları topla
+        constraints = {
+            'default_duration': self.default_exam_duration.value(),
+            'waiting_time': self.waiting_time.value(),
+            'no_overlap': self.no_overlap_checkbox.isChecked(),
+            'excluded_days': excluded_days,
+            'selected_courses': selected_courses,
+            'course_durations': course_durations
+        }
+        
         self.schedule_progress.setVisible(True)
         self.schedule_progress.setRange(0, 0)
         self.generate_schedule_button.setEnabled(False)
         
         try:
             scheduler = ExamScheduler(self.department_id)
-            result = scheduler.generate_exam_schedule(start_date, end_date, exam_types)
+            result = scheduler.generate_exam_schedule(start_date, end_date, exam_types, constraints)
             
             if result['success']:
-                QMessageBox.information(self, "Başarılı", result['message'])
+                message = result['message']
+                if result.get('warnings'):
+                    message += "\n\n⚠️ Uyarılar:\n" + "\n".join(result['warnings'][:5])
+                QMessageBox.information(self, "Başarılı", message)
                 self.load_scheduled_exams()
             else:
                 QMessageBox.critical(self, "Hata", result['message'])
@@ -653,10 +1026,35 @@ class CoordinatorDashboard(QMainWindow):
         # Mevcut widget'ları temizle
         self.clear_schedule_view()
         
-        # Basit takvim görünümü (haftalık)
-        calendar_label = QLabel("Takvim Görünümü - Haftalık Program")
+        # Başlık ve kontroller için layout
+        header_layout = QHBoxLayout()
+        
+        calendar_label = QLabel("Takvim Görünümü")
         calendar_label.setFont(QFont("Arial", 12, QFont.Bold))
-        self.schedule_view_layout.addWidget(calendar_label)
+        header_layout.addWidget(calendar_label)
+        
+        # Hafta seçimi için butonlar
+        self.prev_week_btn = QPushButton("◀ Önceki Hafta")
+        self.prev_week_btn.clicked.connect(self.show_previous_week)
+        self.next_week_btn = QPushButton("Sonraki Hafta ▶")
+        self.next_week_btn.clicked.connect(self.show_next_week)
+        self.current_week_btn = QPushButton("Bu Hafta")
+        self.current_week_btn.clicked.connect(self.show_current_week)
+        
+        header_layout.addStretch()
+        header_layout.addWidget(self.prev_week_btn)
+        header_layout.addWidget(self.current_week_btn)
+        header_layout.addWidget(self.next_week_btn)
+        
+        header_widget = QWidget()
+        header_widget.setLayout(header_layout)
+        self.schedule_view_layout.addWidget(header_widget)
+        
+        # Tarih aralığı gösterimi
+        self.date_range_label = QLabel()
+        self.date_range_label.setFont(QFont("Arial", 10))
+        self.date_range_label.setStyleSheet("color: #555; margin: 5px;")
+        self.schedule_view_layout.addWidget(self.date_range_label)
         
         # Takvim tablosu (7 gün x 4 saat)
         self.calendar_table = QTableWidget()
@@ -672,8 +1070,23 @@ class CoordinatorDashboard(QMainWindow):
         self.calendar_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.calendar_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.calendar_table.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.calendar_table.setMinimumHeight(400)
+        
+        # Stil ayarları
+        self.calendar_table.setStyleSheet("""
+            QTableWidget::item {
+                padding: 10px;
+                border: 1px solid #ddd;
+            }
+        """)
         
         self.schedule_view_layout.addWidget(self.calendar_table)
+        
+        # Başlangıç haftası (bugün)
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        self.current_week_start = today - timedelta(days=today.weekday())
+        
         self.populate_calendar_table()
 
     def load_classroom_view(self):
@@ -681,17 +1094,51 @@ class CoordinatorDashboard(QMainWindow):
         # Mevcut widget'ları temizle
         self.clear_schedule_view()
         
+        # Başlık
+        classroom_label = QLabel("Derslik Kullanım Tablosu")
+        classroom_label.setFont(QFont("Arial", 12, QFont.Bold))
+        self.schedule_view_layout.addWidget(classroom_label)
+        
+        # Filtreleme için derslik seçici
+        filter_layout = QHBoxLayout()
+        filter_layout.addWidget(QLabel("Derslik Filtrele:"))
+        self.classroom_filter_combo = QComboBox()
+        self.classroom_filter_combo.addItem("Tüm Derslikler", None)
+        self.classroom_filter_combo.currentIndexChanged.connect(self.populate_classroom_table)
+        filter_layout.addWidget(self.classroom_filter_combo)
+        filter_layout.addStretch()
+        
+        filter_widget = QWidget()
+        filter_widget.setLayout(filter_layout)
+        self.schedule_view_layout.addWidget(filter_widget)
+        
+        # Derslikleri yükle
+        self.load_classroom_filter_options()
+        
         # Derslik bazlı tablo
         self.classroom_table = QTableWidget()
-        self.classroom_table.setColumnCount(6)
+        self.classroom_table.setColumnCount(7)
         self.classroom_table.setHorizontalHeaderLabels([
-            "Derslik", "Tarih", "Saat", "Sınav", "Ders", "Öğrenci Sayısı"
+            "Derslik", "Kapasite", "Tarih", "Saat", "Sınav Türü", "Ders", "Yerleştirilen Öğr."
         ])
         self.classroom_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.classroom_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.classroom_table.setSortingEnabled(True)
         
         self.schedule_view_layout.addWidget(self.classroom_table)
         self.populate_classroom_table()
+    
+    def load_classroom_filter_options(self):
+        """Derslik filtre seçeneklerini yükler."""
+        try:
+            classrooms = get_classrooms_by_department(self.department_id)
+            for classroom in classrooms:
+                self.classroom_filter_combo.addItem(
+                    f"{classroom['code']} - {classroom['name']}", 
+                    classroom['id']
+                )
+        except Exception as e:
+            print(f"Derslik filtreleri yüklenirken hata: {e}")
 
     def clear_schedule_view(self):
         """Görünüm alanını temizler."""
@@ -725,19 +1172,40 @@ class CoordinatorDashboard(QMainWindow):
         except Exception as e:
             print(f"Sınav programı yüklenirken hata: {e}")
 
+    def show_previous_week(self):
+        """Önceki haftayı gösterir."""
+        from datetime import timedelta
+        self.current_week_start = self.current_week_start - timedelta(days=7)
+        self.populate_calendar_table()
+    
+    def show_next_week(self):
+        """Sonraki haftayı gösterir."""
+        from datetime import timedelta
+        self.current_week_start = self.current_week_start + timedelta(days=7)
+        self.populate_calendar_table()
+    
+    def show_current_week(self):
+        """Bu haftayı gösterir."""
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        self.current_week_start = today - timedelta(days=today.weekday())
+        self.populate_calendar_table()
+    
     def populate_calendar_table(self):
         """Takvim tablosunu doldurur."""
         try:
             scheduler = ExamScheduler(self.department_id)
             exams = scheduler.get_scheduled_exams()
             
-            # Haftalık görünüm için mevcut haftanın tarihlerini al
-            from datetime import datetime, timedelta
-            today = datetime.now().date()
-            monday = today - timedelta(days=today.weekday())
+            from datetime import timedelta
             
             # Haftanın günlerini oluştur
-            week_days = [monday + timedelta(days=i) for i in range(7)]
+            week_days = [self.current_week_start + timedelta(days=i) for i in range(7)]
+            
+            # Tarih aralığını göster
+            week_start_str = self.current_week_start.strftime('%d.%m.%Y')
+            week_end_str = (self.current_week_start + timedelta(days=6)).strftime('%d.%m.%Y')
+            self.date_range_label.setText(f"📅 {week_start_str} - {week_end_str}")
             
             # Sınavları günlere göre grupla
             daily_exams = {}
@@ -754,21 +1222,38 @@ class CoordinatorDashboard(QMainWindow):
                 (9, 0), (11, 0), (13, 0), (15, 0)
             ]
             
+            # Tüm hücreleri temizle
+            self.calendar_table.clearContents()
+            
             for time_index, (hour, minute) in enumerate(time_slots):
                 for day_index in range(7):
                     cell_text = ""
+                    cell_color = QColor(255, 255, 255)  # Beyaz (boş)
+                    
                     if day_index in daily_exams:
                         for exam in daily_exams[day_index]:
                             # start_time timedelta olabilir, saati al
                             exam_hour = self._get_hour_from_time(exam['start_time'])
                             if exam_hour == hour:
-                                cell_text += f"{exam['course_code']}\n{exam['exam_type']}\n"
+                                cell_text += f"📚 {exam['course_code']}\n"
+                                cell_text += f"📝 {exam['exam_type']}\n"
+                                cell_text += f"👤 {exam['instructor_name']}\n"
+                                cell_color = QColor(220, 240, 255)  # Açık mavi
                     
-                    if cell_text:
-                        self.calendar_table.setItem(time_index, day_index, QTableWidgetItem(cell_text.strip()))
+                    item = QTableWidgetItem(cell_text.strip() if cell_text else "")
+                    item.setBackground(cell_color)
+                    
+                    # Bugünü vurgula
+                    from datetime import datetime
+                    if week_days[day_index] == datetime.now().date():
+                        item.setBackground(QColor(255, 255, 220))  # Sarı tonu
+                    
+                    self.calendar_table.setItem(time_index, day_index, item)
                 
         except Exception as e:
             print(f"Takvim görünümü yüklenirken hata: {e}")
+            import traceback
+            traceback.print_exc()
     
     def _get_hour_from_time(self, time_value):
         """TIME alanından saat değerini çıkarır (timedelta veya time objesi olabilir)."""
@@ -787,21 +1272,62 @@ class CoordinatorDashboard(QMainWindow):
     def populate_classroom_table(self):
         """Derslik bazlı tabloyu doldurur."""
         try:
+            # Seçili derslik filtresini al
+            selected_classroom_id = None
+            if hasattr(self, 'classroom_filter_combo'):
+                selected_classroom_id = self.classroom_filter_combo.currentData()
+            
             # Derslik atamalarını al
-            classroom_assignments = self.get_classroom_assignments()
+            classroom_assignments = self.get_classroom_assignments(selected_classroom_id)
             
             self.classroom_table.setRowCount(len(classroom_assignments))
             
             for row_num, assignment in enumerate(classroom_assignments):
-                self.classroom_table.setItem(row_num, 0, QTableWidgetItem(assignment['classroom_code']))
-                self.classroom_table.setItem(row_num, 1, QTableWidgetItem(assignment['exam_date'].strftime('%d.%m.%Y')))
-                self.classroom_table.setItem(row_num, 2, QTableWidgetItem(self._format_time(assignment['start_time'])))
-                self.classroom_table.setItem(row_num, 3, QTableWidgetItem(f"{assignment['course_code']} - {assignment['exam_type']}"))
-                self.classroom_table.setItem(row_num, 4, QTableWidgetItem(assignment['course_name']))
-                self.classroom_table.setItem(row_num, 5, QTableWidgetItem(str(assignment['student_count'])))
+                # Derslik kodu
+                classroom_item = QTableWidgetItem(assignment['classroom_code'])
+                self.classroom_table.setItem(row_num, 0, classroom_item)
+                
+                # Kapasite
+                capacity_item = QTableWidgetItem(str(assignment['capacity']))
+                self.classroom_table.setItem(row_num, 1, capacity_item)
+                
+                # Tarih
+                date_item = QTableWidgetItem(assignment['exam_date'].strftime('%d.%m.%Y'))
+                self.classroom_table.setItem(row_num, 2, date_item)
+                
+                # Saat
+                time_item = QTableWidgetItem(self._format_time(assignment['start_time']))
+                self.classroom_table.setItem(row_num, 3, time_item)
+                
+                # Sınav türü
+                type_item = QTableWidgetItem(assignment['exam_type'])
+                self.classroom_table.setItem(row_num, 4, type_item)
+                
+                # Ders
+                course_item = QTableWidgetItem(f"{assignment['course_code']} - {assignment['course_name']}")
+                self.classroom_table.setItem(row_num, 5, course_item)
+                
+                # Yerleştirilen öğrenci sayısı
+                student_count = assignment['student_count']
+                capacity = assignment['capacity']
+                usage_percent = (student_count / capacity * 100) if capacity > 0 else 0
+                
+                student_item = QTableWidgetItem(f"{student_count} / {capacity} ({usage_percent:.0f}%)")
+                
+                # Doluluk oranına göre renklendirme
+                if usage_percent > 90:
+                    student_item.setBackground(QColor(255, 200, 200))  # Kırmızımsı (çok dolu)
+                elif usage_percent > 70:
+                    student_item.setBackground(QColor(255, 255, 200))  # Sarımsı (orta)
+                else:
+                    student_item.setBackground(QColor(200, 255, 200))  # Yeşilimsi (uygun)
+                
+                self.classroom_table.setItem(row_num, 6, student_item)
                 
         except Exception as e:
             print(f"Derslik görünümü yüklenirken hata: {e}")
+            import traceback
+            traceback.print_exc()
 
     def get_exam_classrooms(self, exam_id):
         """Belirli bir sınavın derslik bilgilerini getirir."""
@@ -825,7 +1351,7 @@ class CoordinatorDashboard(QMainWindow):
         finally:
             connection.close()
 
-    def get_classroom_assignments(self):
+    def get_classroom_assignments(self, classroom_id=None):
         """Derslik atamalarını getirir."""
         connection = get_db_connection()
         if not connection:
@@ -833,23 +1359,45 @@ class CoordinatorDashboard(QMainWindow):
         
         try:
             cursor = connection.cursor(dictionary=True)
-            query = """
-                SELECT e.exam_date, e.start_time, c.code as course_code, c.name as course_name,
-                       e.exam_type, cl.code as classroom_code, cl.capacity,
-                       COUNT(sa.student_id) as student_count
-                FROM exams e
-                JOIN courses c ON e.course_id = c.id
-                JOIN exam_assignments ea ON e.id = ea.exam_id
-                JOIN classrooms cl ON ea.classroom_id = cl.id
-                LEFT JOIN seating_assignments sa ON e.id = sa.exam_id AND cl.id = sa.classroom_id
-                WHERE c.department_id = %s
-                GROUP BY e.id, cl.id
-                ORDER BY e.exam_date, e.start_time, cl.code
-            """
-            cursor.execute(query, (self.department_id,))
+            
+            if classroom_id:
+                # Belirli bir derslik için
+                query = """
+                    SELECT e.exam_date, e.start_time, c.code as course_code, c.name as course_name,
+                           e.exam_type, cl.code as classroom_code, cl.capacity,
+                           COUNT(sa.student_id) as student_count
+                    FROM exams e
+                    JOIN courses c ON e.course_id = c.id
+                    JOIN exam_assignments ea ON e.id = ea.exam_id
+                    JOIN classrooms cl ON ea.classroom_id = cl.id
+                    LEFT JOIN seating_assignments sa ON e.id = sa.exam_id AND cl.id = sa.classroom_id
+                    WHERE c.department_id = %s AND cl.id = %s
+                    GROUP BY e.id, cl.id
+                    ORDER BY e.exam_date, e.start_time
+                """
+                cursor.execute(query, (self.department_id, classroom_id))
+            else:
+                # Tüm derslikler
+                query = """
+                    SELECT e.exam_date, e.start_time, c.code as course_code, c.name as course_name,
+                           e.exam_type, cl.code as classroom_code, cl.capacity,
+                           COUNT(sa.student_id) as student_count
+                    FROM exams e
+                    JOIN courses c ON e.course_id = c.id
+                    JOIN exam_assignments ea ON e.id = ea.exam_id
+                    JOIN classrooms cl ON ea.classroom_id = cl.id
+                    LEFT JOIN seating_assignments sa ON e.id = sa.exam_id AND cl.id = sa.classroom_id
+                    WHERE c.department_id = %s
+                    GROUP BY e.id, cl.id
+                    ORDER BY cl.code, e.exam_date, e.start_time
+                """
+                cursor.execute(query, (self.department_id,))
+            
             return cursor.fetchall()
         except Exception as e:
             print(f"Derslik atamaları alınırken hata: {e}")
+            import traceback
+            traceback.print_exc()
             return []
         finally:
             connection.close()
@@ -1139,6 +1687,8 @@ class CoordinatorDashboard(QMainWindow):
             self.tabs.setTabEnabled(4, False)
             self.tabs.setTabEnabled(5, False)
             self.tabs.setTabEnabled(6, False)
+            self.tabs.setTabEnabled(7, False)
+            self.tabs.setTabEnabled(8, False)
         else:  # Derslik varsa aktif yap
             self.tabs.setTabEnabled(1, True)
             self.tabs.setTabEnabled(2, True)
@@ -1146,6 +1696,8 @@ class CoordinatorDashboard(QMainWindow):
             self.tabs.setTabEnabled(4, True)
             self.tabs.setTabEnabled(5, True)
             self.tabs.setTabEnabled(6, True)
+            self.tabs.setTabEnabled(7, True)
+            self.tabs.setTabEnabled(8, True)
 
         for row_num, classroom in enumerate(classrooms):
             self.classrooms_table.insertRow(row_num)
@@ -1255,36 +1807,130 @@ class ClassroomVisualizer(QDialog):
         super().__init__(parent)
         self.data = classroom_data
         self.setWindowTitle(f"Oturma Düzeni: {self.data['code']} - {self.data['name']}")
-
+        
+        main_layout = QVBoxLayout()
+        
+        # Başlık bilgileri
+        info_layout = QHBoxLayout()
+        info_label = QLabel(f"📋 Derslik: {self.data['code']} - {self.data['name']}")
+        info_label.setFont(QFont("Arial", 12, QFont.Bold))
+        info_layout.addWidget(info_label)
+        
+        capacity_label = QLabel(f"👥 Kapasite: {self.data['capacity']}")
+        capacity_label.setFont(QFont("Arial", 10))
+        info_layout.addWidget(capacity_label)
+        
+        seating_info = QLabel(f"🪑 {self.data['seating_type']}'li Sıra Düzeni")
+        seating_info.setFont(QFont("Arial", 10))
+        info_layout.addWidget(seating_info)
+        info_layout.addStretch()
+        
+        main_layout.addLayout(info_layout)
+        
+        # Ayraç çizgisi
+        line = QLabel()
+        line.setFrameStyle(QLabel.HLine | QLabel.Sunken)
+        main_layout.addWidget(line)
+        
+        # Sahne/Tahta gösterimi
+        stage_label = QLabel("🎓 TAHTA / SAHNE 🎓")
+        stage_label.setAlignment(Qt.AlignCenter)
+        stage_label.setStyleSheet("""
+            background-color: #2c3e50; 
+            color: white; 
+            padding: 10px; 
+            font-weight: bold; 
+            border-radius: 5px;
+            font-size: 14px;
+        """)
+        main_layout.addWidget(stage_label)
+        main_layout.addSpacing(20)
+        
+        # Koltuk düzeni için grid layout
+        grid_widget = QWidget()
         layout = QGridLayout()
-        layout.setSpacing(5)
-
+        layout.setSpacing(3)
+        
         rows = self.data['rows_count']
         cols = self.data['cols_count']
         seating_type = self.data['seating_type']
-
+        
+        # Sıralar ve boşluklar için kolon hesaplama
+        # Her seating_type kadar koltuğun ardından bir boşluk kolonu ekleriz
+        grid_col_position = 0
+        
         for r in range(rows):
+            grid_col_position = 0  # Her satırda baştan başla
+            
             for c in range(cols):
                 # Her sırayı bir grup olarak ele al
                 group_index = c // seating_type
-
-                # Grup indeksine göre renk belirle (görsel ayrım için)
-                color = QColor("#d3d3d3") if group_index % 2 == 0 else QColor("#e0e0e0")
-
-                seat = QLabel(f"Sıra {r + 1}\nKoltuk {c + 1}")
+                position_in_group = c % seating_type
+                
+                # Grup rengini belirle
+                if group_index % 2 == 0:
+                    color = QColor("#87CEEB")  # Açık mavi
+                else:
+                    color = QColor("#98FB98")  # Açık yeşil
+                
+                seat = QLabel(f"💺\nS{r + 1}-K{c + 1}")
                 seat.setAlignment(Qt.AlignCenter)
-                seat.setMinimumSize(60, 40)
+                seat.setMinimumSize(70, 55)
+                seat.setMaximumSize(70, 55)
                 seat.setAutoFillBackground(True)
-
+                
                 palette = seat.palette()
                 palette.setColor(seat.backgroundRole(), color)
                 seat.setPalette(palette)
-
-                seat.setStyleSheet("border: 1px solid black; border-radius: 5px;")
-
-                layout.addWidget(seat, r, c)
-
-        self.setLayout(layout)
+                
+                seat.setStyleSheet("""
+                    border: 2px solid #2c3e50; 
+                    border-radius: 8px;
+                    font-size: 9px;
+                    font-weight: bold;
+                """)
+                
+                # Grid'e ekle
+                layout.addWidget(seat, r, grid_col_position)
+                grid_col_position += 1
+                
+                # Grup sonu mu? (seating_type'a göre)
+                if (c + 1) % seating_type == 0 and c < cols - 1:
+                    # Boşluk kolonu ekle (koridor)
+                    spacer = QLabel()
+                    spacer.setMinimumWidth(25)
+                    spacer.setMaximumWidth(25)
+                    spacer.setStyleSheet("background-color: #ecf0f1;")
+                    layout.addWidget(spacer, r, grid_col_position)
+                    grid_col_position += 1
+        
+        grid_widget.setLayout(layout)
+        main_layout.addWidget(grid_widget, alignment=Qt.AlignCenter)
+        
+        # Alt bilgi
+        main_layout.addSpacing(20)
+        footer_label = QLabel(f"Toplam {rows} sıra × {cols} koltuk = {rows * cols} kişilik kapasite")
+        footer_label.setAlignment(Qt.AlignCenter)
+        footer_label.setStyleSheet("color: #7f8c8d; font-style: italic;")
+        main_layout.addWidget(footer_label)
+        
+        # Renk açıklamaları
+        legend_layout = QHBoxLayout()
+        legend_layout.addStretch()
+        
+        legend1 = QLabel("🟦 Grup 1, 3, 5...")
+        legend1.setStyleSheet("color: #3498db;")
+        legend_layout.addWidget(legend1)
+        
+        legend2 = QLabel("🟩 Grup 2, 4, 6...")
+        legend2.setStyleSheet("color: #2ecc71;")
+        legend_layout.addWidget(legend2)
+        
+        legend_layout.addStretch()
+        main_layout.addLayout(legend_layout)
+        
+        self.setLayout(main_layout)
+        self.setMinimumSize(800, 600)
 
     # def init_debug_ui(self):
     #     """Debug sekmesinin arayüzünü oluşturur."""

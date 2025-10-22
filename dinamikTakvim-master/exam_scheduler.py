@@ -18,8 +18,9 @@ class ExamScheduler:
             time(15, 0),  # 15:00
         ]
         self.exam_duration = 120  # 2 saat
+        self.course_students_cache = {}  # Performans için önbellek
         
-    def generate_exam_schedule(self, start_date, end_date, exam_types=['Vize', 'Final']):
+    def generate_exam_schedule(self, start_date, end_date, exam_types=['Vize', 'Final'], constraints=None):
         """
         Sınav programını oluşturur.
         
@@ -27,56 +28,123 @@ class ExamScheduler:
             start_date: Sınav döneminin başlangıç tarihi
             end_date: Sınav döneminin bitiş tarihi
             exam_types: Sınav türleri listesi
+            constraints: Kısıtlar sözlüğü (ders seçimi, süreler, vb.)
         """
         try:
             # Mevcut sınavları temizle
             self.clear_existing_exams()
             
+            # Kısıtları işle
+            if constraints is None:
+                constraints = {}
+            
+            default_duration = constraints.get('default_duration', 120)
+            waiting_time = constraints.get('waiting_time', 15)
+            no_overlap = constraints.get('no_overlap', False)
+            excluded_days = constraints.get('excluded_days', [5, 6])  # Cumartesi, Pazar
+            selected_courses = constraints.get('selected_courses', [])
+            course_durations = constraints.get('course_durations', {})
+            
             # Tarih aralığını oluştur
-            self.exam_dates = self._generate_date_range(start_date, end_date)
+            self.exam_dates = self._generate_date_range(start_date, end_date, excluded_days)
+            
+            if not self.exam_dates:
+                return {
+                    'success': False,
+                    'message': "Seçilen tarih aralığında uygun gün bulunamadı!",
+                    'scheduled_count': 0
+                }
             
             # Dersleri ve öğrenci sayılarını al
-            courses = self._get_courses_with_student_counts()
+            all_courses = self._get_courses_with_student_counts()
+            
+            # Seçili dersleri filtrele
+            if selected_courses:
+                courses = [c for c in all_courses if c['id'] in selected_courses]
+            else:
+                courses = all_courses
+            
+            if not courses:
+                return {
+                    'success': False,
+                    'message': "Zamanlanacak ders bulunamadı!",
+                    'scheduled_count': 0
+                }
+            
+            # PERFORMANS İYİLEŞTİRMESİ: Tüm ders-öğrenci eşleşmelerini önceden yükle
+            print("Ders-öğrenci eşleşmeleri yükleniyor...")
+            self.course_students_cache = {}
+            for course in courses:
+                self.course_students_cache[course['id']] = self._get_course_students(course['id'])
             
             # Sınavları zamanla
             scheduled_exams = []
+            warnings = []
+            errors = []
+            
             for exam_type in exam_types:
                 for course in courses:
-                    exam_slot = self._find_available_slot(course, exam_type, scheduled_exams)
+                    # Ders için süre belirle
+                    exam_duration = course_durations.get(course['id'], default_duration)
+                    
+                    # Uygun slot bul
+                    exam_slot = self._find_available_slot(
+                        course, exam_type, scheduled_exams, 
+                        no_overlap, waiting_time
+                    )
+                    
                     if exam_slot:
-                        exam_id = self._create_exam(course, exam_type, exam_slot)
+                        exam_id = self._create_exam(course, exam_type, exam_slot, exam_duration)
                         if exam_id:
                             # Dersliklere atama yap
-                            self._assign_to_classrooms(exam_id, course['student_count'])
+                            assignment_success = self._assign_to_classrooms(exam_id, course['student_count'])
+                            if not assignment_success:
+                                warnings.append(f"⚠️ {course['code']} dersi için yeterli derslik bulunamadı")
+                            
                             scheduled_exams.append({
                                 'exam_id': exam_id,
                                 'course_id': course['id'],
-                                'class_level': course['class_level'],  # Sınıf seviyesini ekle
+                                'course_code': course['code'],
+                                'class_level': course['class_level'],
                                 'date': exam_slot['date'],
                                 'time': exam_slot['time'],
                                 'student_count': course['student_count']
                             })
+                        else:
+                            errors.append(f"❌ {course['code']} dersi için sınav oluşturulamadı")
+                    else:
+                        errors.append(f"❌ {course['code']} - {exam_type} için uygun zaman bulunamadı (çakışma var)")
+            
+            # Cache'i temizle
+            self.course_students_cache = {}
             
             return {
                 'success': True,
-                'message': f"{len(scheduled_exams)} sınav başarıyla zamanlandı.",
-                'scheduled_count': len(scheduled_exams)
+                'message': f"✅ {len(scheduled_exams)} sınav başarıyla zamanlandı.",
+                'scheduled_count': len(scheduled_exams),
+                'warnings': warnings,
+                'errors': errors
             }
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
                 'success': False,
-                'message': f"Sınav zamanlama hatası: {str(e)}",
+                'message': f"❌ Sınav zamanlama hatası: {str(e)}",
                 'scheduled_count': 0
             }
     
-    def _generate_date_range(self, start_date, end_date):
-        """Tarih aralığını oluşturur (hafta sonları hariç)."""
+    def _generate_date_range(self, start_date, end_date, excluded_days=None):
+        """Tarih aralığını oluşturur (belirtilen günler hariç)."""
+        if excluded_days is None:
+            excluded_days = [5, 6]  # Varsayılan: Cumartesi, Pazar
+        
         dates = []
         current = start_date
         while current <= end_date:
-            # Hafta sonları hariç (Pazartesi=0, Pazar=6)
-            if current.weekday() < 5:
+            # Hariç tutulan günler dışındaki günleri ekle
+            if current.weekday() not in excluded_days:
                 dates.append(current)
             current += timedelta(days=1)
         return dates
@@ -106,22 +174,53 @@ class ExamScheduler:
         finally:
             connection.close()
     
-    def _find_available_slot(self, course, exam_type, scheduled_exams):
-        """Ders için uygun zaman dilimi bulur."""
-        # Aynı sınıf seviyesindeki derslerin çakışmaması için kontrol
-        # (Farklı sınıf seviyelerindeki dersler aynı anda farklı dersliklerde sınav yapabilir)
-        same_level_courses = [exam for exam in scheduled_exams 
-                             if exam.get('class_level') == course['class_level']]
+    def _find_available_slot(self, course, exam_type, scheduled_exams, no_overlap=False, waiting_time=15):
+        """Ders için uygun zaman dilimi bulur (öğrenci çakışma kontrolü ile)."""
+        # Bu dersi alan öğrencileri al (cache'den)
+        course_students = self.course_students_cache.get(course['id'], [])
+        
+        if not course_students:
+            # Öğrencisi olmayan dersler için basit zamanlama
+            for date in self.exam_dates:
+                for time_slot in self.exam_times:
+                    if no_overlap:
+                        conflict = any(s['date'] == date and s['time'] == time_slot for s in scheduled_exams)
+                        if not conflict:
+                            return {'date': date, 'time': time_slot}
+                    else:
+                        return {'date': date, 'time': time_slot}
+            return None
         
         for date in self.exam_dates:
             for time_slot in self.exam_times:
-                # Sadece aynı sınıf seviyesinde çakışma var mı kontrol et
                 conflict = False
-                for scheduled in same_level_courses:
-                    if (scheduled['date'] == date and 
-                        scheduled['time'] == time_slot):
+                
+                # 1. Hiçbir sınav aynı anda olmaması kısıtı
+                if no_overlap:
+                    for scheduled in scheduled_exams:
+                        if (scheduled['date'] == date and 
+                            scheduled['time'] == time_slot):
+                            conflict = True
+                            break
+                    
+                    if conflict:
+                        continue
+                
+                # 2. Öğrenci bazlı çakışma kontrolü (cache'den)
+                for student_id in course_students:
+                    if self._student_has_exam_at_cached(student_id, date, time_slot, scheduled_exams):
                         conflict = True
                         break
+                
+                if conflict:
+                    continue
+                
+                # 3. Bekleme süresi kontrolü (sadece waiting_time > 0 ise)
+                if waiting_time > 0:
+                    for student_id in course_students:
+                        if not self._check_waiting_time_cached(student_id, date, time_slot, scheduled_exams, waiting_time):
+                            conflict = True
+                            break
                 
                 if not conflict:
                     return {
@@ -131,8 +230,61 @@ class ExamScheduler:
         
         return None
     
-    def _create_exam(self, course, exam_type, exam_slot):
+    def _get_course_students(self, course_id):
+        """Derse kayıtlı öğrenci ID'lerini döndürür."""
+        connection = get_db_connection()
+        if not connection:
+            return []
+        
+        try:
+            cursor = connection.cursor()
+            query = "SELECT student_id FROM enrollments WHERE course_id = %s"
+            cursor.execute(query, (course_id,))
+            return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"Ders öğrencileri alınırken hata: {e}")
+            return []
+        finally:
+            connection.close()
+    
+    def _student_has_exam_at_cached(self, student_id, date, time_slot, scheduled_exams):
+        """Öğrencinin belirtilen tarih ve saatte sınavı var mı kontrol eder (cache kullanarak)."""
+        for exam in scheduled_exams:
+            if exam['date'] == date and exam['time'] == time_slot:
+                # Bu sınavı alan öğrenciler arasında bu öğrenci var mı? (cache'den)
+                exam_students = self.course_students_cache.get(exam['course_id'], [])
+                if student_id in exam_students:
+                    return True
+        return False
+    
+    def _check_waiting_time_cached(self, student_id, date, time_slot, scheduled_exams, waiting_time):
+        """Öğrencinin bekleme süresi kısıtını kontrol eder (cache kullanarak)."""
+        # Aynı günde öğrencinin başka sınavları var mı?
+        for exam in scheduled_exams:
+            if exam['date'] == date:
+                exam_students = self.course_students_cache.get(exam['course_id'], [])
+                if student_id in exam_students:
+                    # Saat farkını hesapla (basitleştirilmiş)
+                    exam_time = exam['time']
+                    slot_time = time_slot
+                    
+                    # time objelerini dakikaya çevir
+                    exam_minutes = exam_time.hour * 60 + exam_time.minute
+                    slot_minutes = slot_time.hour * 60 + slot_time.minute
+                    
+                    time_diff = abs(exam_minutes - slot_minutes)
+                    
+                    # Eğer bekleme süresinden az ise False döndür
+                    if time_diff < waiting_time and time_diff > 0:
+                        return False
+        
+        return True
+    
+    def _create_exam(self, course, exam_type, exam_slot, exam_duration=None):
         """Veritabanına sınav kaydı oluşturur."""
+        if exam_duration is None:
+            exam_duration = self.exam_duration
+        
         connection = get_db_connection()
         if not connection:
             return None
@@ -145,7 +297,7 @@ class ExamScheduler:
             """
             cursor.execute(query, (
                 course['id'], exam_type, exam_slot['date'], 
-                exam_slot['time'], self.exam_duration
+                exam_slot['time'], exam_duration
             ))
             connection.commit()
             return cursor.lastrowid
